@@ -182,4 +182,61 @@ describe('test', () => {
       new WebSocketHandler('ws://localhost/ws').test('http://localhost/other'),
     ).toBe(false)
   })
+
+  it('returns true for any host given a wildcard host', () => {
+    expect(new WebSocketHandler('ws://*').test('ws://localhost:5000')).toBe(
+      true,
+    )
+    expect(new WebSocketHandler('ws://*').test('ws://example.com')).toBe(true)
+  })
+
+  it('returns true for any host given a bare wildcard', () => {
+    expect(new WebSocketHandler('*').test('ws://example.com')).toBe(true)
+  })
+
+  // A wildcard in the path is not a wildcard authority, so these still resolve
+  // against the base url and stay scoped to its host.
+  it('scopes a relative path containing a wildcard to the base url', () => {
+    expect(
+      new WebSocketHandler('/ws/*').test('ws://localhost/ws/anything', {
+        baseUrl: 'ws://localhost',
+      }),
+    ).toBe(true)
+
+    expect(
+      new WebSocketHandler('/ws/*').test('ws://elsewhere/ws/anything', {
+        baseUrl: 'ws://localhost',
+      }),
+    ).toBe(false)
+  })
+
+  it('scopes an absolute path containing a wildcard to its host', () => {
+    expect(
+      new WebSocketHandler('ws://localhost/ws/*').test(
+        'ws://localhost/ws/anything',
+      ),
+    ).toBe(true)
+
+    expect(
+      new WebSocketHandler('ws://localhost/ws/*').test(
+        'ws://elsewhere/ws/anything',
+      ),
+    ).toBe(false)
+  })
+
+  it('normalizes the scheme of an HTTP url containing a wildcard path', () => {
+    expect(
+      new WebSocketHandler('http://localhost/ws/*').test(
+        'ws://localhost/ws/anything',
+      ),
+    ).toBe(true)
+  })
+
+  it('ignores a trailing slash on a url containing a wildcard path', () => {
+    expect(
+      new WebSocketHandler('ws://localhost/ws/*/').test(
+        'ws://localhost/ws/anything/',
+      ),
+    ).toBe(true)
+  })
 })

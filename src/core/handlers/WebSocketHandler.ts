@@ -64,10 +64,10 @@ export class WebSocketHandler {
 
     // Resolve the WebSocket handler path:
     // - Plain string URLs resolved as per the specification (via Interceptors).
-    // - String URLs starting with a wildcard are preserved (prepending a scheme there will break them).
+    // - String URLs with a wildcard authority are preserved (see `hasWildcardAuthority`).
     // - RegExp paths are preserved.
     const resolvedHandlerUrl =
-      this.url instanceof RegExp || this.url.startsWith('*')
+      this.url instanceof RegExp || hasWildcardAuthority(this.url)
         ? this.url
         : this.#resolveWebSocketUrl(this.url, args.resolutionContext?.baseUrl)
 
@@ -212,6 +212,18 @@ export class WebSocketHandler {
      */
     return resolvedUrl.replace(/\/$/, '')
   }
+}
+
+/**
+ * Whether the authority of `url` contains a wildcard, as in `*` or `ws://*`.
+ *
+ * A wildcard authority does not survive URL parsing. `ws` is a special scheme, so the host
+ * is parsed as a domain, where `*` is not a legal character: Chromium percent-encodes it to
+ * `%2A` and Firefox throws, while WebKit preserves it. Such a pattern is already absolute,
+ * so it never needs resolving against a base URL.
+ */
+function hasWildcardAuthority(url: string): boolean {
+  return /^(?:[a-z][a-z0-9+\-.]*:\/\/)?[^/?#]*\*/i.test(url)
 }
 
 function createStopPropagationListener(handler: WebSocketHandler) {
