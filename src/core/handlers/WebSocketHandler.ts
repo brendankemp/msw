@@ -194,6 +194,18 @@ export class WebSocketHandler {
   }
 
   #resolveWebSocketUrl(url: string, baseUrl?: string): string {
+    /**
+     * @note A wildcard authority has no interoperable `URL` parse: Chromium
+     * percent-encodes it, Firefox 113 rejects it, WebKit preserves it. Stand a
+     * legal host in for it so the resolution below stays engine-independent.
+     */
+    if (WILDCARD_AUTHORITY_REGEXP.test(url)) {
+      return this.#resolveWebSocketUrl(
+        url.replace('*', WILDCARD_PLACEHOLDER_HOST),
+        baseUrl,
+      ).replace(WILDCARD_PLACEHOLDER_HOST, '*')
+    }
+
     const resolvedUrl = resolveWebSocketUrl(
       baseUrl
         ? /**
@@ -213,6 +225,15 @@ export class WebSocketHandler {
     return resolvedUrl.replace(/\/$/, '')
   }
 }
+
+/**
+ * A wildcard in the authority of an absolute url, like `ws://*`.
+ * A wildcard elsewhere survives `URL` parsing and is left to it.
+ */
+const WILDCARD_AUTHORITY_REGEXP = /^[a-z][a-z0-9+\-.]*:\/\/[^/?#]*\*/i
+
+/** Any host that parses identically in every engine. `.invalid` is reserved. */
+const WILDCARD_PLACEHOLDER_HOST = 'wildcard.invalid'
 
 function createStopPropagationListener(handler: WebSocketHandler) {
   return function stopPropagationListener(event: Event) {

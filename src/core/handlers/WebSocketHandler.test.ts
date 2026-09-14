@@ -38,6 +38,65 @@ describe('parse', () => {
     })
   })
 
+  it('matches any host against a wildcard authority', () => {
+    expect(
+      new WebSocketHandler('ws://*').parse({
+        url: new URL('ws://localhost:3000/'),
+      }),
+    ).toEqual({
+      match: {
+        matches: true,
+        params: { '0': 'localhost:3000/' },
+      },
+    })
+  })
+
+  it('normalises the scheme of a wildcard authority', () => {
+    expect(
+      new WebSocketHandler('http://*').parse({
+        url: new URL('ws://localhost:3000/'),
+      }).match.matches,
+    ).toBe(true)
+
+    expect(
+      new WebSocketHandler('https://*').parse({
+        url: new URL('wss://localhost:3000/'),
+      }).match.matches,
+    ).toBe(true)
+  })
+
+  it('ignores trailing slash on a wildcard authority', () => {
+    expect(
+      new WebSocketHandler('ws://*/').parse({
+        url: new URL('ws://localhost:3000/'),
+      }).match.matches,
+    ).toBe(true)
+  })
+
+  it('matches a wildcard in the path', () => {
+    expect(
+      new WebSocketHandler('ws://localhost:3000/*').parse({
+        url: new URL('ws://localhost:3000/chat'),
+      }).match.matches,
+    ).toBe(true)
+  })
+
+  it('rejects a wildcard authority with an unsupported scheme', () => {
+    expect(() =>
+      new WebSocketHandler('ftp://*').parse({
+        url: new URL('ws://localhost:3000/'),
+      }),
+    ).toThrow(/scheme must be either/)
+  })
+
+  it('rejects a wildcard authority with a fragment', () => {
+    expect(() =>
+      new WebSocketHandler('ws://*#chat').parse({
+        url: new URL('ws://localhost:3000/'),
+      }),
+    ).toThrow(/Fragment identifiers are not allowed/)
+  })
+
   it('supports path parameters', () => {
     expect(
       new WebSocketHandler('ws://localhost:3000/:serviceName').parse({
